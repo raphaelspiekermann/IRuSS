@@ -1,1 +1,1 @@
-from .unet import UNetModel
+from .unet import UNetModel, Upsample

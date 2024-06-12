@@ -34,5 +34,5 @@ install: ## Install environment
 	conda env create -f environment.yaml
 
 update: ## Update environment
-	conda activate local_moco  
+	conda activate iruss
 	conda env update --file environment.yaml --prune

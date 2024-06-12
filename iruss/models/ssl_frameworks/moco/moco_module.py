@@ -16,7 +16,6 @@ from torch.nn import functional as F  # noqa: N812
 
 from iruss.models.components.fm_reconstructor import FM_Reconstructor
 from iruss.models.ssl_frameworks.moco import utils as moco_utils
-from iruss.models.ssl_model import SSL_ModelW
 
 # It seems to be impossible to avoid mypy errors if using import instead of getattr().
 # See https://github.com/python/mypy/issues/8823
@@ -43,13 +42,11 @@ def precision_at_k(output, target, top_k=(1,)):
         return res
 
 
-def nearest_neighbor_accuracy_at_k(
-    query: torch.Tensor, target: List[Any], top_k=5
-) -> float:
-    """
-    Calculates the accuracy of the nearest neighbor prediction. The query is compared against the target list, which
-    contains the ground truth labels for the nearest neighbor search. The accuracy is calculated by comparing the
-    prediction of the query against the ground truth labels of the nearest neighbors.
+def nearest_neighbor_accuracy_at_k(query: torch.Tensor, target: List[Any], top_k=5) -> float:
+    """Calculates the accuracy of the nearest neighbor prediction. The query is compared against
+    the target list, which contains the ground truth labels for the nearest neighbor search. The
+    accuracy is calculated by comparing the prediction of the query against the ground truth labels
+    of the nearest neighbors.
 
     Args:
         query: A tensor containing the query representations.
@@ -82,184 +79,15 @@ def nearest_neighbor_accuracy_at_k(
         return n_correct / len(target)
 
 
-def linear_eval(moco, only_test=False) -> Dict[str, Any]:
-    """Linear evaluation of the MoCo model. The model is trained for a few epochs on the downstream task of classifying"""
-    import tempfile
-
-    # TODO: [] only save model with best
-    #          lin eval accuracy and train on it for a clean metric ?
-    cfg = moco.linear_eval
-    # print("cfg", cfg)
-    # print('cfg.max_epochs',cfg.max_epochs)
-    MAX_EPOCHS = cfg.max_epochs
-    PATIENCE = cfg.patience
-    BATCH_SIZE = cfg.batch_size
-
-    moco_trainer = moco.trainer
-    moco_datamodule = moco_trainer.datamodule
-
-    # if only_test: print('lin_eval_ckpt:',lin_eval_ckpt)  # debug
-    # else: print('lin_eval_ckpt:',lin_eval_ckpt) # debug
-
-    orig_device = moco.device
-    moco.cpu()
-
-    if moco_datamodule.__class__.__name__ == "DoMars16kContrastiveDataModule":
-        from iruss.data.domars16k_datamodule import DoMars16kDataModule
-        from iruss.models.linear_eval_classification import (
-            MultiClassLinearEvalLitModule,
-        )
-
-        # Checkpoint is either the last moco model from ssl training or the best lin eval model
-        lin_eval_ckpt = (
-            moco
-            if not only_test
-            else get_best_ckpt_path(moco_trainer, "linear_eval_acc")
-        )
-        model = MultiClassLinearEvalLitModule(
-            lin_eval_ckpt,
-            cfg.optimizer,
-            cfg.scheduler,
-            num_classes=15,
-        )
-        hparams = moco_datamodule.wrapped_datamodule.hparams
-        hparams.batch_size = BATCH_SIZE
-
-        datamodule = DoMars16kDataModule(**hparams)
-        MONITOR_METRIC = "val/acc"
-    elif moco_datamodule.__class__.__name__ == "JezeroCraterContrastiveDataModule":
-        from iruss.data.jezero_datamodule import JezeroCraterDataModule
-        from iruss.models.linear_eval_segmentation import (
-            SegmentationLinearEvalLitModule,
-        )
-
-        # Checkpoint is either the last moco model from ssl training or the best lin eval model
-        lin_eval_ckpt = (
-            moco
-            if not only_test
-            else get_best_ckpt_path(moco_trainer, "linear_eval_MIoU")
-        )
-        # TODO: Right now only segmentation is supported, but this should be extended to classification
-        model = SegmentationLinearEvalLitModule(
-            lin_eval_ckpt,
-            cfg.optimizer,
-            cfg.scheduler,
-            num_classes=29,
-        )
-
-        hparams = deepcopy(moco_datamodule.wrapped_datamodule.hparams)
-        hparams.task = "segmentation"  # HACK, fix this
-        hparams.batch_size = BATCH_SIZE
-        datamodule = JezeroCraterDataModule(**hparams)
-        MONITOR_METRIC = "val/MIoU"
-
-    elif moco_datamodule.__class__.__name__ == "SSL4EOLContrastiveDataModule":
-        from iruss.data.SSL4EOL_datamodule import SSL4EOLDataModule
-        from iruss.models.linear_eval_segmentation import (
-            SegmentationLinearEvalLitModule,
-        )
-
-        # Checkpoint is either the last moco model from ssl training or the best lin eval model
-        lin_eval_ckpt = (
-            moco
-            if not only_test
-            else get_best_ckpt_path(moco_trainer, "linear_eval_MIoU")
-        )
-        model = SegmentationLinearEvalLitModule(
-            lin_eval_ckpt,
-            cfg.optimizer,
-            cfg.scheduler,
-            num_classes=moco_datamodule.wrapped_datamodule.num_classes,
-        )
-
-        hparams = deepcopy(moco_datamodule.wrapped_datamodule.hparams)
-        hparams.batch_size = BATCH_SIZE
-
-        datamodule = SSL4EOLDataModule(**hparams)
-        MONITOR_METRIC = "val/MIoU"
-    elif moco_datamodule.__class__.__name__ == "SeasoNetContrastiveDataModule":
-        from iruss.data.seasonet_datamodule import SeasoNetDataModule
-        from iruss.models.linear_eval_segmentation import (
-            SegmentationLinearEvalLitModule,
-        )
-
-        # Checkpoint is either the last moco model from ssl training or the best lin eval model
-        lin_eval_ckpt = (
-            moco
-            if not only_test
-            else get_best_ckpt_path(moco_trainer, "linear_eval_acc")
-        )
-        model = SegmentationLinearEvalLitModule(
-            lin_eval_ckpt,
-            cfg.optimizer,
-            cfg.scheduler,
-            num_classes=34,  # 33 classes + 1 None class
-        )
-
-        hparams = deepcopy(moco_datamodule.wrapped_datamodule.hparams)
-        hparams.task = "segmentation"  # HACK, fix this
-        hparams.batch_size = BATCH_SIZE
-
-        datamodule = SeasoNetDataModule(**hparams)
-        MONITOR_METRIC = "val/MIoU"
-
-    else:
-        raise NotImplementedError(
-            f"Linear evaluation for {moco_datamodule} not implemented"
-        )
-
-    with tempfile.TemporaryDirectory() as _dir:
-
-        accelerator_map = {
-            v["accelerator"].__name__: v["accelerator_name"]
-            for v in AcceleratorRegistry.values()
-        }
-
-        accelerator = accelerator_map[moco_trainer.accelerator.__class__.__name__]
-        devices = moco_trainer.device_ids if accelerator != "cpu" else "auto"
-
-        trainer = L.Trainer(
-            max_epochs=MAX_EPOCHS,
-            callbacks=[
-                EarlyStopping(monitor=MONITOR_METRIC, patience=PATIENCE, mode="max")
-            ],
-            default_root_dir=_dir,
-            logger=None,
-            accelerator=accelerator,
-            devices=devices,
-            enable_progress_bar=False,
-            enable_checkpointing=False,
-            enable_model_summary=False,
-            limit_train_batches=0.01 if only_test else 1.0,
-            limit_val_batches=0.05 if only_test else 1.0,
-            limit_test_batches=0.05 if only_test else 1.0,
-        )
-
-        if not only_test:
-            trainer.fit(model, datamodule=datamodule)
-        trainer.test(model=model, datamodule=datamodule, verbose=False)
-        test_metrics = trainer.callback_metrics
-
-    moco.to(orig_device)
-
-    print(f"LINEAR EVAL - Achieved {test_metrics['test/acc'] = }")
-    print(test_metrics.keys())  # debug
-    return moco_utils.handle_lin_eval_metrics(
-        test_metrics, metric_prefix="linear_eval_"
-    )
-
-
 class RepresentationQueue(nn.Module):
-    """The queue is implemented as list of representations and a pointer to the location where the next batch of
-    representations will be overwritten."""
+    """The queue is implemented as list of representations and a pointer to the location where the
+    next batch of representations will be overwritten."""
 
     def __init__(self, representation_size: int, queue_size: int):
         super().__init__()
 
         self.representations: Tensor
-        self.register_buffer(
-            "representations", torch.randn(representation_size, queue_size)
-        )
+        self.register_buffer("representations", torch.randn(representation_size, queue_size))
         self.representations = nn.functional.normalize(self.representations, dim=0)
 
         self.pointer: Tensor
@@ -267,12 +95,12 @@ class RepresentationQueue(nn.Module):
 
     @torch.no_grad()
     def dequeue_and_enqueue(self, x: Tensor) -> None:
-        """Replaces representations in the queue, starting at the current queue pointer, and advances the pointer.
+        """Replaces representations in the queue, starting at the current queue pointer, and
+        advances the pointer.
 
         Args:
             x: A mini-batch of representations. The queue size has to be a multiple of the total number of
                 representations across all devices.
-
         """
         # Gather representations from all GPUs into a [batch_size * world_size, num_features] tensor, in case of
         # distributed training.
@@ -294,7 +122,7 @@ class RepresentationQueue(nn.Module):
 class LocalMocoLitModule(L.LightningModule):
     def __init__(
         self,
-        ssl_model: SSL_Model,
+        ssl_model: nn.Module,
         fm_reconstructor: Optional[FM_Reconstructor] = None,
         blocking_masks: bool = True,
         passing_masks: bool = True,
@@ -419,62 +247,12 @@ class LocalMocoLitModule(L.LightningModule):
         self,
         name: str,
         images: Union[List[PILImage], Tensor],
-        cmap: Union["none", "voc"] = "none",
+        cmap: str = "none",
         max_images_to_log: int = 0,
     ):
-        if not self.is_logging_step:
-            return
+        pass
 
-        if max_images_to_log == 0:
-            max_images_to_log = self.MAX_IMAGES_TO_LOG
-
-        if len(images) > max_images_to_log:
-            images = images[:max_images_to_log]
-
-        if isinstance(images, list):
-            if all(isinstance(img, PILImage) for img in images):
-                images = [torchvision.transforms.ToTensor()(img) for img in images]
-            images = torch.stack(images)
-
-        if images.shape[1] > 3 and len(images.shape) == 4 and cmap == "none":
-            images = images[:, :3]  # only RGB channels
-
-        if cmap == "none":
-            # TODO: save an argmax version of the learned features ?
-            # TODO: Check the current saved images for the features again and maybe
-            #       increase max_images_to_log
-            if self.logger is not None:
-                self.logger.experiment.add_images(
-                    f"{self.stage}_{name}",
-                    images.detach().cpu(),
-                    self.global_step,
-                )
-        elif cmap == "voc":
-            cmap = mpl.colors.ListedColormap(color_map_voc(normalized=True))
-            cmaps_I = torch.zeros(
-                (max_images_to_log, images.shape[2], images.shape[3], 3)
-            ).numpy()
-
-            for b_idx in range(max_images_to_log):
-                cmaps_I[b_idx] = cmap(
-                    images[:max_images_to_log]
-                    .argmax(1)[b_idx, :, :]
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )[:, :, :3]
-
-            if self.logger is not None:
-                self.logger.experiment.add_images(
-                    f"{self.stage}_{name}",
-                    cmaps_I,
-                    dataformats="NHWC",
-                    global_step=self.global_step,
-                )
-
-    def _process_step(
-        self, batch: Tuple[List[List[Tensor]], List[Any]]
-    ) -> Optional[STEP_OUTPUT]:
+    def _process_step(self, batch: Tuple[List[List[Tensor]], List[Any]]) -> Optional[STEP_OUTPUT]:
         # Calculate loss and metrics
         loss = self._calculate_loss(batch)
         self._log_metric("loss", loss)
@@ -487,36 +265,7 @@ class LocalMocoLitModule(L.LightningModule):
         self._stage = stage
 
     def on_train_end(self) -> None:
-        if self.linear_eval is not None:
-            # lin eval from best lin eval ckpt
-            # best_lin_eval_acc = linear_eval(self, only_test=True)
-            # self.logger.experiment.add_scalar(
-            #     f"best_linear_eval_acc",
-            #     best_lin_eval_acc,
-            #     self.global_step,
-            # )
-            if self.logger is not None:
-                for metric in self.best_lin_eval_metric_lookup:
-                    self.logger.experiment.add_scalar(
-                        metric,
-                        self.best_lin_eval_metric_lookup[metric],
-                        self.global_step,
-                    )
-
-            # lin eval from last ckpt
-
-            lin_eval_metrics = linear_eval(self)
-            print(lin_eval_metrics.keys())  # debug
-            if self.logger is not None:
-                for metric in self.lin_eval_metric_lookup:
-                    if metric in lin_eval_metrics:
-                        self.logger.experiment.add_scalar(
-                            metric,
-                            lin_eval_metrics[metric],
-                            self.global_step,
-                        )
-
-        super().on_train_end()
+        pass
 
     def training_step(
         self, batch: Tuple[List[List[Tensor]], List[Any]], batch_idx: int
@@ -544,89 +293,7 @@ class LocalMocoLitModule(L.LightningModule):
         return self._process_step(batch)
 
     def on_validation_epoch_end(self):
-        # linear eval intermediate
-        if self.is_lin_eval_step and self.linear_eval is not None:
-            if self.current_epoch != 0:
-                print(f"Linear Eval - Epoch {self.current_epoch}!")  # debug
-                lin_eval_metrics = linear_eval(self)
-
-                if self.logger is not None:
-                    for metric in self.lin_eval_metric_lookup:
-                        if metric in lin_eval_metrics:
-                            self.logger.experiment.add_scalar(
-                                metric,
-                                lin_eval_metrics[metric],
-                                self.global_step,
-                            )
-                # self.logger.experiment.add_scalar(
-                #     f"lineval_f1_ep",
-                #     lin_eval_acc,
-                #     self.current_epoch,
-                # )
-                for metric in self.lin_eval_metric_lookup:
-                    if metric in lin_eval_metrics:
-                        self.log(
-                            f"{metric}_ep",
-                            lin_eval_metrics[metric],
-                            on_step=False,
-                            on_epoch=True,
-                            sync_dist=True,
-                            prog_bar=True,
-                        )
-                        # TODO: dirty hack for backwards compatibility -> fix later
-                        if (
-                            "linear_eval_acc" == metric
-                            and "linear_eval_f1" not in lin_eval_metrics
-                        ):
-                            self.log(
-                                "lineval_f1_ep",
-                                lin_eval_metrics[metric],
-                                on_step=False,
-                                on_epoch=True,
-                                sync_dist=True,
-                                prog_bar=True,
-                            )
-
-                for metric in self.lin_eval_metric_lookup:
-                    if metric in lin_eval_metrics:
-                        if (
-                            self.best_lin_eval_metric_lookup[f"best_{metric}"]
-                            <= lin_eval_metrics[metric]
-                        ):
-                            self.best_lin_eval_metric_lookup[f"best_{metric}"] = (
-                                lin_eval_metrics[metric]
-                            )
-
-            elif self.current_epoch == 0:
-                # init metric so that the moco checkpoint callback works!
-                # self.logger.experiment.add_scalar(
-                #     f"lineval_f1_ep",
-                #     0,
-                #     self.current_epoch,
-                # )
-                # debug
-                for metric in self.lin_eval_metric_lookup:
-                    self.log(
-                        f"{metric}_ep",
-                        0,
-                        on_step=False,
-                        on_epoch=True,
-                        sync_dist=True,
-                        prog_bar=True,
-                    )
-                    # TODO: dirty hack for backwards compatibility and only valid in single class classification -> fix later
-                    self.log(
-                        "lineval_f1_ep",
-                        0,
-                        on_step=False,
-                        on_epoch=True,
-                        sync_dist=True,
-                        prog_bar=True,
-                    )
-                self.best_lin_eval_metric_lookup = {}
-                for metric in self.lin_eval_metric_lookup:
-                    self.best_lin_eval_metric_lookup[f"best_{metric}"] = 0
-        return
+        pass
 
     def test_step(
         self, batch: Tuple[List[List[Tensor]], List[Any]], batch_idx: int
@@ -637,8 +304,8 @@ class LocalMocoLitModule(L.LightningModule):
     def configure_optimizers(
         self,
     ) -> Tuple[List[optim.Optimizer], List[optim.lr_scheduler._LRScheduler]]:
-        """Constructs the optimizer and learning rate scheduler based on ``self.optimizer_params`` and
-        ``self.lr_scheduler_params``.
+        """Constructs the optimizer and learning rate scheduler based on ``self.optimizer_params``
+        and ``self.lr_scheduler_params``.
 
         If weight decay is specified, it will be applied only to convolutional layer weights.
         """
@@ -674,9 +341,7 @@ class LocalMocoLitModule(L.LightningModule):
     def _momentum_update_key_encoder(self) -> None:
         """Momentum update of the key encoder."""
         momentum = self.encoder_momentum
-        for param_q, param_k in zip(
-            self.model_q.parameters(), self.model_k.parameters()
-        ):
+        for param_q, param_k in zip(self.model_q.parameters(), self.model_k.parameters()):
             param_k.data = param_k.data * momentum + param_q.data * (1.0 - momentum)
 
     def _init_batch(self, batch):
@@ -698,7 +363,8 @@ class LocalMocoLitModule(L.LightningModule):
         return q_images, k_images, q_conditionings, k_conditionings, targets
 
     def _calculate_loss(self, batch) -> Tuple[Tensor, Tensor, Tensor]:
-        """Calculates the normalized temperature-scaled cross entropy loss from a mini-batch of image pairs.
+        """Calculates the normalized temperature-scaled cross entropy loss from a mini-batch of
+        image pairs.
 
         Args:
             batch: A tuple containing a list for q_images, k_images, q_conditionings, k_conditionings, and the targets.
@@ -710,16 +376,12 @@ class LocalMocoLitModule(L.LightningModule):
         # queries
         q_feature_maps = self.model_q._forward_backbone(q_imgs)
 
-        self._log_images(
-            "q_feature_maps", q_feature_maps[0].unsqueeze(1), max_images_to_log=64
-        )
+        self._log_images("q_feature_maps", q_feature_maps[0].unsqueeze(1), max_images_to_log=64)
         self._log_images("q_argmax_feature_maps", q_feature_maps, cmap="voc")
 
         # (B, C, H', W')
         q_local_embed = self.model_q._forward_local_projector(q_feature_maps)
-        self._log_images(
-            "q_feature_maps_up", q_local_embed[0].unsqueeze(1), max_images_to_log=64
-        )
+        self._log_images("q_feature_maps_up", q_local_embed[0].unsqueeze(1), max_images_to_log=64)
         self._log_images("q_argmax_local_proj", q_local_embed, cmap="voc")
 
         # (B, representation_size)
@@ -742,27 +404,17 @@ class LocalMocoLitModule(L.LightningModule):
 
             if isinstance(self.trainer.strategy, DDPStrategy):
                 k_local_embed = moco_utils.sort_batch(k_local_embed, original_order)
-                k_global_embeddings = moco_utils.sort_batch(
-                    k_global_embeddings, original_order
-                )
+                k_global_embeddings = moco_utils.sort_batch(k_global_embeddings, original_order)
 
-        q = nn.functional.normalize(q_global_embeddings, dim=1)
+        q = nn.functional.normalize(
+            q_global_embeddings, dim=1
+        )  # Each embedding is normalized to have a length of 1.
         k = nn.functional.normalize(k_global_embeddings, dim=1)
 
-        try:
-            nn_acc = nearest_neighbor_accuracy_at_k(q, y_hats, top_k=5)
-            self._log_metric("nn_acc", nn_acc)
-            # self._log_metric(
-            #     "nn_acc", nn_acc, on_step, on_epoch, sync_dist, False
-            # )
-        except:
-            pass  # ignore if targets are not available
-
         # Concatenate logits from the positive pairs (batch_size x 1) and the negative pairs (batch_size x queue_size).
+        # (B, 1), B[i] = dot(q[i], k[i]) --> Only the diagonal of the dot product matrix
         pos_logits = torch.einsum("nc,nc->n", [q, k]).unsqueeze(-1)
-        neg_logits = torch.einsum(
-            "nc,ck->nk", [q, self.queue.representations.clone().detach()]
-        )
+        neg_logits = torch.einsum("nc,ck->nk", [q, self.queue.representations.clone().detach()])
         logits = torch.cat([pos_logits, neg_logits], dim=1) / self.temperature
 
         # The correct label for every query is 0. Calculate the cross entropy of classifying each query correctly.
@@ -792,12 +444,8 @@ class LocalMocoLitModule(L.LightningModule):
         q_conditionings: Optional[List[Any]] = None,
         k_conditionings: Optional[List[Any]] = None,
     ) -> Tensor:
-        self._log_images(
-            "q_local_embeddings", q_local_embed[0].unsqueeze(1), max_images_to_log=64
-        )
-        self._log_images(
-            "k_local_embeddings", k_local_embed[0].unsqueeze(1), max_images_to_log=64
-        )
+        self._log_images("q_local_embeddings", q_local_embed[0].unsqueeze(1), max_images_to_log=64)
+        self._log_images("k_local_embeddings", k_local_embed[0].unsqueeze(1), max_images_to_log=64)
 
         # Create conditionings for the FM-Reconstructor
         if q_conditionings is not None:
@@ -820,9 +468,7 @@ class LocalMocoLitModule(L.LightningModule):
         # If available, use the FM-Reconstructor to reconstruct the local features
         if self.fm_reconstructor is not None:
             # use the FM-Reconstructor to reconstruct the local features
-            masks = (
-                [q_conditionings_tensor] if q_conditionings_tensor is not None else []
-            )
+            masks = [q_conditionings_tensor] if q_conditionings_tensor is not None else []
             if k_conditionings is not None:
                 masks.append(k_conditionings_tensor)
 
@@ -857,9 +503,7 @@ class LocalMocoLitModule(L.LightningModule):
                 #     masks_temp_tensor.device
                 # )
                 # blocking_masks[blocking_masks > 0] = 1.0
-                blocking_masks = torch.clone(passing_masks.detach()).to(
-                    passing_masks.device
-                )
+                blocking_masks = torch.clone(passing_masks.detach()).to(passing_masks.device)
                 blocking_masks[blocking_masks == 1.0] = 0.9
                 blocking_masks[blocking_masks == 0] = 1.0
                 blocking_masks[blocking_masks == 0.9] = 0
@@ -880,12 +524,8 @@ class LocalMocoLitModule(L.LightningModule):
                 inv_block_mask[inv_block_mask == 0] = 1.0
                 inv_block_mask[inv_block_mask < 1.0] = 0
                 # noise_mask
-                noise_mask = torch.clone(blocking_masks.detach()).to(
-                    blocking_masks.device
-                )
-                noise_mask = noise_mask.unsqueeze(1) + blocking_tf(
-                    noise_mask.unsqueeze(1)
-                )
+                noise_mask = torch.clone(blocking_masks.detach()).to(blocking_masks.device)
+                noise_mask = noise_mask.unsqueeze(1) + blocking_tf(noise_mask.unsqueeze(1))
                 noise_mask = noise_mask * inv_block_mask.unsqueeze(1)
                 # print(f'noise_mask: {noise_mask.min()} | {noise_mask.max()}') # debug
                 q_local_embed = q_local_embed + noise_mask  # new
