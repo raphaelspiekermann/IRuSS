@@ -9,6 +9,7 @@ name: iruss
 
 channels:
   - pytorch
+  - nvidia
   - conda-forge
   - defaults
 
@@ -22,7 +23,9 @@ channels:
 
 dependencies:
   - python=3.10
-  - pytorch=2.*
+  - cudatoolkit=11.* # 11.*
+  - pytorch=2.*=*cuda*
+  - pytorch-cuda=12.1 # 11.7
   - torchvision=0.*
   - lightning=2.*
   - torchmetrics=0.*
@@ -35,6 +38,7 @@ dependencies:
   - matplotlib
   - timm
   - pytorch-metric-learning
+  - faiss-gpu=1.*
 
   # --------- loggers --------- #
   # - wandb
