@@ -1,0 +1,28 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: market1501
+  - override /model: reid
+  - override /callbacks: default
+  - override /trainer: reid_trainer
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["test_reid"]
+
+seed: 42
+
+trainer:
+  min_epochs: 100
+  max_epochs: 100
+  gradient_clip_val: 0.5
+  # limit_train_batches: 0.1
+
+data:
+  data_dir: E:/
+  batch_size: 128
+  num_workers: 8

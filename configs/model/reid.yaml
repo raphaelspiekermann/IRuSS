@@ -1,0 +1,3 @@
+_target_: iruss.models.reid_module.ReidLitModule
+
+freeze_backbone: true
