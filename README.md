@@ -113,7 +113,7 @@ The directory structure of new project looks like this:
 │
 ├── scripts                <- Shell scripts
 │
-├── src                    <- Source code
+├── iruss                    <- Source code
 │   ├── data                     <- Data scripts
 │   ├── models                   <- Model scripts
 │   ├── utils                    <- Utility scripts
@@ -474,8 +474,8 @@ If no tags are provided, you will be asked to input them from command line:
 
 ```bash
 >>> python train.py tags=[]
-[2022-07-11 15:40:09,358][src.utils.utils][INFO] - Enforcing tags! <cfg.extras.enforce_tags=True>
-[2022-07-11 15:40:09,359][src.utils.rich_utils][WARNING] - No tags provided in config. Prompting user to input tags...
+[2022-07-11 15:40:09,358][iruss.utils.utils][INFO] - Enforcing tags! <cfg.extras.enforce_tags=True>
+[2022-07-11 15:40:09,359][iruss.utils.rich_utils][WARNING] - No tags provided in config. Prompting user to input tags...
 Enter a list of comma separated tags (dev):
 ```
 
@@ -514,10 +514,10 @@ Suggestions for improvements are always welcome!
 All PyTorch Lightning modules are dynamically instantiated from module paths specified in config. Example model config:
 
 ```yaml
-_target_: src.models.mnist_model.MNISTLitModule
+_target_: iruss.models.mnist_model.MNISTLitModule
 lr: 0.001
 net:
-  _target_: src.models.components.simple_dense_net.SimpleDenseNet
+  _target_: iruss.models.components.simple_dense_net.SimpleDenseNet
   input_size: 784
   lin1_size: 256
   lin2_size: 256
@@ -875,7 +875,7 @@ You can also pass a datamodule config parameter to your model through variable i
 
 ```yaml
 # ./configs/model/my_model.yaml
-_target_: src.models.my_module.MyLitModule
+_target_: iruss.models.my_module.MyLitModule
 lr: 0.01
 some_param: ${data.some_param}
 ```
@@ -1115,7 +1115,7 @@ git commit -m "Add raw data"
 <summary><b>Support installing project as a package</b></summary>
 
 It allows other people to easily use your modules in their own projects.
-Change name of the `src` folder to your project name and complete the `setup.py` file.
+Change name of the `iruss` folder to your project name and complete the `setup.py` file.
 
 Now your project can be installed from local files:
 
@@ -1225,10 +1225,10 @@ ______________________________________________________________________
 
 # Your Project Name
 
-<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
-<a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
-<a href="https://hydra.cc/"><img alt="Config: Hydra" src="https://img.shields.io/badge/Config-Hydra-89b8cd"></a>
-<a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" src="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a><br>
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" iruss="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+<a href="https://pytorchlightning.ai/"><img alt="Lightning" iruss="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
+<a href="https://hydra.cc/"><img alt="Config: Hydra" iruss="https://img.shields.io/badge/Config-Hydra-89b8cd"></a>
+<a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" iruss="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a><br>
 [![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 [![Conference](http://img.shields.io/badge/AnyConference-year-4b44ce.svg)](https://papers.nips.cc/paper/2020)
 
