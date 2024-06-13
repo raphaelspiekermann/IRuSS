@@ -5,9 +5,9 @@ from typing import List, Tuple, Union
 import torch
 import torchvision.transforms.functional as F
 from PIL import Image
-from src.utils.type_checking import typechecked
 from torch import Tensor
 from torchvision import transforms
+from typeguard import typechecked
 
 
 def _setup_size(x, name, req_sizes=(2,)):
