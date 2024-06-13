@@ -1,4 +1,4 @@
-""" DropBlock, DropPath
+"""DropBlock, DropPath.
 
 PyTorch implementations of DropBlock and DropPath (Stochastic Depth) regularization layers.
 
@@ -23,20 +23,20 @@ import torch.nn.functional as F
 
 
 def ndgrid(*tensors) -> Tuple[torch.Tensor, ...]:
-    """generate N-D grid in dimension order.
+    """Generate N-D grid in dimension order.
 
-    The ndgrid function is like meshgrid except that the order of the first two input arguments are switched.
+    The ndgrid function is like meshgrid except that the order of the first two input arguments are
+    switched.
 
-    That is, the statement
-    [X1,X2,X3] = ndgrid(x1,x2,x3)
+    That is, the statement [X1,X2,X3] = ndgrid(x1,x2,x3)
 
     produces the same result as
 
     [X2,X1,X3] = meshgrid(x2,x1,x3)
 
     This naming is based on MATLAB, the purpose is to avoid confusion due to torch's change to make
-    torch.meshgrid behaviour move from matching ndgrid ('ij') indexing to numpy meshgrid defaults of ('xy').
-
+    torch.meshgrid behaviour move from matching ndgrid ('ij') indexing to numpy meshgrid defaults
+    of ('xy').
     """
     try:
         return torch.meshgrid(*tensors, indexing="ij")
@@ -73,9 +73,7 @@ def drop_block_2d(
     )
 
     # Forces the block to be inside the feature map.
-    w_i, h_i = ndgrid(
-        torch.arange(W, device=x.device), torch.arange(H, device=x.device)
-    )
+    w_i, h_i = ndgrid(torch.arange(W, device=x.device), torch.arange(H, device=x.device))
     valid_block = (
         (w_i >= clipped_block_size // 2) & (w_i < W - (clipped_block_size - 1) // 2)
     ) & ((h_i >= clipped_block_size // 2) & (h_i < H - (clipped_block_size - 1) // 2))
@@ -166,7 +164,10 @@ def drop_block_fast_2d(
 
 
 class DropBlock2d(nn.Module):
-    """DropBlock. See https://arxiv.org/pdf/1810.12890.pdf"""
+    """DropBlock.
+
+    See https://arxiv.org/pdf/1810.12890.pdf
+    """
 
     def __init__(
         self,
@@ -178,7 +179,7 @@ class DropBlock2d(nn.Module):
         batchwise: bool = False,
         fast: bool = True,
     ):
-        super(DropBlock2d, self).__init__()
+        super().__init__()
         self.drop_prob = drop_prob
         self.gamma_scale = gamma_scale
         self.block_size = block_size
@@ -211,9 +212,7 @@ class DropBlock2d(nn.Module):
             )
 
 
-def drop_path(
-    x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
-):
+def drop_path(x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
     This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
@@ -221,14 +220,11 @@ def drop_path(
     See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for
     changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
     'survival rate' as the argument.
-
     """
     if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (
-        x.ndim - 1
-    )  # work with diff dim tensors, not just 2D ConvNets
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor.div_(keep_prob)
@@ -239,7 +235,7 @@ class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
-        super(DropPath, self).__init__()
+        super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
 

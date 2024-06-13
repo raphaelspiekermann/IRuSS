@@ -59,27 +59,21 @@ class FeedForward(nn.Module):
             else GEGLU(dim, inner_dim)
         )
 
-        self.net = nn.Sequential(
-            project_in, nn.Dropout(dropout), nn.Linear(inner_dim, dim_out)
-        )
+        self.net = nn.Sequential(project_in, nn.Dropout(dropout), nn.Linear(inner_dim, dim_out))
 
     def forward(self, x):
         return self.net(x)
 
 
 def zero_module(module):
-    """
-    Zero out the parameters of a module and return it.
-    """
+    """Zero out the parameters of a module and return it."""
     for p in module.parameters():
         p.detach().zero_()
     return module
 
 
 def Normalize(in_channels):
-    return torch.nn.GroupNorm(
-        num_groups=32, num_channels=in_channels, eps=1e-6, affine=True
-    )
+    return torch.nn.GroupNorm(num_groups=32, num_channels=in_channels, eps=1e-6, affine=True)
 
 
 class LinearAttention(nn.Module):
@@ -99,9 +93,7 @@ class LinearAttention(nn.Module):
         k = k.softmax(dim=-1)
         context = torch.einsum("bhdn,bhen->bhde", k, v)
         out = torch.einsum("bhde,bhdn->bhen", context, q)
-        out = rearrange(
-            out, "b heads c (h w) -> b (heads c) h w", heads=self.heads, h=h, w=w
-        )
+        out = rearrange(out, "b heads c (h w) -> b (heads c) h w", heads=self.heads, h=h, w=w)
         return self.to_out(out)
 
 
@@ -111,15 +103,9 @@ class SpatialSelfAttention(nn.Module):
         self.in_channels = in_channels
 
         self.norm = Normalize(in_channels)
-        self.q = torch.nn.Conv2d(
-            in_channels, in_channels, kernel_size=1, stride=1, padding=0
-        )
-        self.k = torch.nn.Conv2d(
-            in_channels, in_channels, kernel_size=1, stride=1, padding=0
-        )
-        self.v = torch.nn.Conv2d(
-            in_channels, in_channels, kernel_size=1, stride=1, padding=0
-        )
+        self.q = torch.nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0)
+        self.k = torch.nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0)
+        self.v = torch.nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0)
         self.proj_out = torch.nn.Conv2d(
             in_channels, in_channels, kernel_size=1, stride=1, padding=0
         )
@@ -163,9 +149,7 @@ class CrossAttention(nn.Module):
         self.to_k = nn.Linear(context_dim, inner_dim, bias=False)
         self.to_v = nn.Linear(context_dim, inner_dim, bias=False)
 
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, query_dim), nn.Dropout(dropout)
-        )
+        self.to_out = nn.Sequential(nn.Linear(inner_dim, query_dim), nn.Dropout(dropout))
 
     def forward(self, x, context=None, mask=None):
         h = self.heads
@@ -222,9 +206,7 @@ class BasicTransformerBlock(nn.Module):
         self.checkpoint = checkpoint
 
     def forward(self, x, context=None):
-        return checkpoint(
-            self._forward, (x, context), self.parameters(), self.checkpoint
-        )
+        return checkpoint(self._forward, (x, context), self.parameters(), self.checkpoint)
 
     def _forward(self, x, context=None):
         x = self.attn1(self.norm1(x)) + x
@@ -234,25 +216,19 @@ class BasicTransformerBlock(nn.Module):
 
 
 class SpatialTransformer(nn.Module):
-    """
-    Transformer block for image-like data.
-    First, project the input (aka embedding)
-    and reshape to b, t, d.
-    Then apply standard transformer action.
-    Finally, reshape to image
+    """Transformer block for image-like data.
+
+    First, project the input (aka embedding) and reshape to b, t, d. Then apply standard
+    transformer action. Finally, reshape to image
     """
 
-    def __init__(
-        self, in_channels, n_heads, d_head, depth=1, dropout=0.0, context_dim=None
-    ):
+    def __init__(self, in_channels, n_heads, d_head, depth=1, dropout=0.0, context_dim=None):
         super().__init__()
         self.in_channels = in_channels
         inner_dim = n_heads * d_head
         self.norm = Normalize(in_channels)
 
-        self.proj_in = nn.Conv2d(
-            in_channels, inner_dim, kernel_size=1, stride=1, padding=0
-        )
+        self.proj_in = nn.Conv2d(in_channels, inner_dim, kernel_size=1, stride=1, padding=0)
 
         self.transformer_blocks = nn.ModuleList(
             [

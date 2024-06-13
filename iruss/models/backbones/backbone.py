@@ -22,16 +22,12 @@ class Backbone(nn.Module):
     @lru_cache
     @torch.no_grad
     def _compute_sample_output(self):
-        sample_input = torch.randn(
-            2, self.in_channels, _SAMPLE_INPUT_DIM, _SAMPLE_INPUT_DIM
-        )
+        sample_input = torch.randn(2, self.in_channels, _SAMPLE_INPUT_DIM, _SAMPLE_INPUT_DIM)
 
         device = next(self.parameters()).device
         sample_input = sample_input.to(device)
 
-        global_features, local_features = self.forward(
-            sample_input, return_feature_maps=True
-        )
+        global_features, local_features = self.forward(sample_input, return_feature_maps=True)
 
         assert local_features.ndim == 4
         assert global_features.ndim == 2

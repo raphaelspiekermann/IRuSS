@@ -33,9 +33,7 @@ def concatenate_all(tensor: Tensor) -> Tensor:
 
     This function has no gradient.
     """
-    gathered_tensor = [
-        torch.zeros_like(tensor) for _ in range(torch.distributed.get_world_size())
-    ]
+    gathered_tensor = [torch.zeros_like(tensor) for _ in range(torch.distributed.get_world_size())]
     torch.distributed.all_gather(gathered_tensor, tensor.contiguous())
     return torch.cat(gathered_tensor, 0)
 
@@ -53,7 +51,6 @@ def shuffle_batch(x: Tensor) -> Tuple[Tensor, Tensor]:
     Returns:
         The output tensor and a list of indices that gives the original order of the combined mini-batch. The output
         tensor is the same size as the input tensor, but contains a random subset of the combined mini-batch.
-
     """
     all_x = concatenate_all(x)
 
@@ -86,7 +83,6 @@ def sort_batch(x: Tensor, order: Tensor) -> Tensor:
 
     Returns:
         The subset of the combined mini-batch that corresponds to this device.
-
     """
     all_x = concatenate_all(x)
 
@@ -108,7 +104,5 @@ def handle_lin_eval_metrics(metrics: dict, metric_prefix: str = "linear_eval_"):
             new_key = f"{metric_prefix}{key_suffix}"
             new_metrics[new_key] = metrics[metric]
         else:
-            print(
-                f"linear eval metric <{metric}> can not be handled, due to inconsistent name! "
-            )
+            print(f"linear eval metric <{metric}> can not be handled, due to inconsistent name! ")
     return new_metrics

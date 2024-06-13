@@ -29,9 +29,7 @@ class Block(nn.Module):
 
     def __init__(self, dim, drop_path=0.0):
         super().__init__()
-        self.dwconv = nn.Conv2d(
-            dim, dim, kernel_size=7, padding=3, groups=dim
-        )  # depthwise conv
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)  # depthwise conv
         self.norm = LayerNorm(dim, eps=1e-6)
         self.pwconv1 = nn.Linear(
             dim, 4 * dim
@@ -74,74 +72,8 @@ for _version in _CONFIGS:
     _WEIGHTS[_version] = version_specific_weights
 
 
-def load_state_dict(
-    model, state_dict, prefix="", ignore_missing="relative_position_index"
-):
-    missing_keys = []
-    unexpected_keys = []
-    error_msgs = []
-    # copy state_dict so _load_from_state_dict can modify it
-    metadata = getattr(state_dict, "_metadata", None)
-    state_dict = state_dict.copy()
-    if metadata is not None:
-        state_dict._metadata = metadata
-
-    def load(module, prefix=""):
-        local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
-        module._load_from_state_dict(
-            state_dict,
-            prefix,
-            local_metadata,
-            True,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        )
-        for name, child in module._modules.items():
-            if child is not None:
-                load(child, prefix + name + ".")
-
-    load(model, prefix=prefix)
-
-    warn_missing_keys = []
-    ignore_missing_keys = []
-    for key in missing_keys:
-        keep_flag = True
-        for ignore_key in ignore_missing.split("|"):
-            if ignore_key in key:
-                keep_flag = False
-                break
-        if keep_flag:
-            warn_missing_keys.append(key)
-        else:
-            ignore_missing_keys.append(key)
-
-    missing_keys = warn_missing_keys
-
-    if len(missing_keys) > 0:
-        print(
-            "Weights of {} not initialized from pretrained model: {}".format(
-                model.__class__.__name__, missing_keys
-            )
-        )
-    if len(unexpected_keys) > 0:
-        print(
-            "Weights from pretrained model not used in {}: {}".format(
-                model.__class__.__name__, unexpected_keys
-            )
-        )
-    if len(ignore_missing_keys) > 0:
-        print(
-            "Ignored weights of {} not initialized from pretrained model: {}".format(
-                model.__class__.__name__, ignore_missing_keys
-            )
-        )
-    if len(error_msgs) > 0:
-        print("\n".join(error_msgs))
-
-
 class ConvNeXtV2Backbone(Backbone):
-    """ConvNeXt V2
+    """ConvNeXt V2.
 
     Args:
         in_channels (int): Number of input image channels. Default: 3
@@ -183,10 +115,7 @@ class ConvNeXtV2Backbone(Backbone):
         cur = 0
         for i in range(4):
             stage = nn.Sequential(
-                *[
-                    Block(dim=dims[i], drop_path=dp_rates[cur + j])
-                    for j in range(depths[i])
-                ]
+                *[Block(dim=dims[i], drop_path=dp_rates[cur + j]) for j in range(depths[i])]
             )
             self.stages.append(stage)
             cur += depths[i]

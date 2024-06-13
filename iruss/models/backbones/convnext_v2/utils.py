@@ -33,9 +33,7 @@ class LayerNorm(nn.Module):
 
     def forward(self, x):
         if self.data_format == "channels_last":
-            return F.layer_norm(
-                x, self.normalized_shape, self.weight, self.bias, self.eps
-            )
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
         elif self.data_format == "channels_first":
             u = x.mean(1, keepdim=True)
             s = (x - u).pow(2).mean(1, keepdim=True)
@@ -45,7 +43,7 @@ class LayerNorm(nn.Module):
 
 
 class GRN(nn.Module):
-    """GRN (Global Response Normalization) layer"""
+    """GRN (Global Response Normalization) layer."""
 
     def __init__(self, dim):
         super().__init__()
@@ -75,9 +73,7 @@ def remap_checkpoint_keys(ckpt):
             elif len(v.shape) == 2:  # reshape depthwise convolution
                 kv, dim = v.shape
                 ks = int(math.sqrt(kv))
-                new_ckpt[new_k] = (
-                    v.permute(1, 0).reshape(dim, 1, ks, ks).transpose(3, 2)
-                )
+                new_ckpt[new_k] = v.permute(1, 0).reshape(dim, 1, ks, ks).transpose(3, 2)
             continue
         elif "ln" in k or "linear" in k:
             k = k.split(".")
@@ -96,9 +92,7 @@ def remap_checkpoint_keys(ckpt):
     return new_ckpt
 
 
-def load_state_dict(
-    model, state_dict, prefix="", ignore_missing="relative_position_index"
-):
+def load_state_dict(model, state_dict, prefix="", ignore_missing="relative_position_index"):
     missing_keys = []
     unexpected_keys = []
     error_msgs = []

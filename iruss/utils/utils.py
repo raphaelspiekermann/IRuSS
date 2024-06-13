@@ -18,11 +18,7 @@ def dump_source_code(cfg) -> None:
     _root = Path(__file__).parent.parent.parent
 
     def get_git_revision_hash() -> str:
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"])
-            .decode("ascii")
-            .strip()
-        )
+        return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
 
     try:
         sha = get_git_revision_hash()
@@ -162,9 +158,7 @@ def task_wrapper(task_func: Callable) -> Callable:
     return wrap
 
 
-def get_metric_value(
-    metric_dict: Dict[str, Any], metric_name: Optional[str]
-) -> Optional[float]:
+def get_metric_value(metric_dict: Dict[str, Any], metric_name: Optional[str]) -> Optional[float]:
     """Safely retrieves value of the metric logged in LightningModule.
 
     :param metric_dict: A dict containing metric values.

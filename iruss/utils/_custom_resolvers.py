@@ -31,7 +31,7 @@ def process_dir_name(parameter_string):
 
     # print(f"{parameter_string = }")
 
-    parameter_string = parameter_string.replace("\\,", "__").replace("\=", "__")
+    parameter_string = parameter_string.replace("\\,", "__").replace(r"\=", "__")
     processed_items = []
     for item in parameter_string.split(HYDRA_ITEM_SEPERATOR):
         if item == "":
@@ -39,7 +39,7 @@ def process_dir_name(parameter_string):
         # print(f"{item = }")
 
         if item.count(HYDRA_SEPERATOR) > 1:
-            # only use until first occurence of seperator in string
+            # only use until first occurrence of separator in string
             key, value = (
                 item[: item.index(HYDRA_SEPERATOR)],
                 item[item.index(HYDRA_SEPERATOR) :],
@@ -55,11 +55,11 @@ def process_dir_name(parameter_string):
         if reduced_key in BLACKLIST_KEYS:
             continue
 
-        # if value contains a path seperator, skip it to avoid creating directories
+        # if value contains a path separator, skip it to avoid creating directories
         os_sep = os.path.sep
         if isinstance(value, str) and value.find(os_sep) != -1:
             warnings.warn(
-                f"Value {value} for key {key} contains a path seperator! Skipping in directory-name generation..."
+                f"Value {value} for key {key} contains a path separator! Skipping in directory-name generation..."
             )
             continue
 
